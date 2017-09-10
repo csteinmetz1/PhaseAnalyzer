@@ -32,7 +32,7 @@ PhaseAnalyzerAudioProcessor::PhaseAnalyzerAudioProcessor() :
     sampleDelay    = 0 ;   // delay in samples      ( 0-2048)
     frameSize      = 512; // analysis frame size   (64-4096)
     accuracy       = 0;  // delay est. accuracy ( 0-100%)
-    active         = 0;    // is GCC analysis occuring
+    framesAnalyzed = 0;    // is GCC analysis occuring
     delayedChannel = 0;    // 0 - right delayed 1 - left delayed
     pathLength     = 0;    // path length difference in cm
     latency        = 0;    // delay time in ms
@@ -195,7 +195,7 @@ void PhaseAnalyzerAudioProcessor::changeProgramName (int index, const String& ne
 }
 
 //==============================================================================
-void PhaseAnalyzerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void PhaseAnalyzerAudioProcessor::prepareToPlay (double sampleRate_, int samplesPerBlock)
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
@@ -204,7 +204,7 @@ void PhaseAnalyzerAudioProcessor::prepareToPlay (double sampleRate, int samplesP
     analysisBuffer_.clear();
     gccBuffer.setSize(4, analysisBufferLength_);
     gccBuffer.clear();
-    sampleRate_ = sampleRate;
+    sampleRate = sampleRate_;
 }
 
 void PhaseAnalyzerAudioProcessor::releaseResources()
@@ -299,8 +299,6 @@ int PhaseAnalyzerAudioProcessor::gccPHAT(int frame)
       
     if (gccBuffer.getRMSLevel(0, 0, frameSize) > silenceThreshold)
     {
-        active = true;
-        
         applyWindow(gccBuffer);
         
         // copy frameSize samples into Complex Time Domain buffers
@@ -358,8 +356,6 @@ int PhaseAnalyzerAudioProcessor::gccPHAT(int frame)
         else {delayedChannel = 1;}
     }
     else {frameDelay = -1;} // return -1 if the RMS level is below the threshold
-    
-    active = false;
    
     return frameDelay;
 }
@@ -445,7 +441,7 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
         if (i > 0) {
             sampleDelay = analysis.first;
 
-            latency = ((double(sampleDelay)/sampleRate_)) * 1000.0;
+            latency = ((double(sampleDelay)/sampleRate)) * 1000.0;
             pathLength = (latency * speedOfSound)/10.0;
             
             int count = 0;
@@ -459,6 +455,7 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
             }
             cout << count << endl;
             accuracy = floor((float(count) / float(i))*100);
+            framesAnalyzed = i;
         }
         resetBuffer();
     }
@@ -499,7 +496,7 @@ void PhaseAnalyzerAudioProcessor::getStateInformation (MemoryBlock& destData)
     xml.setAttribute("sampleDelay", sampleDelay);
     xml.setAttribute("frameSize", frameSize);
     xml.setAttribute("accuracy", accuracy);
-    xml.setAttribute("active", active);
+    xml.setAttribute("framesAnalyzed", framesAnalyzed);
     xml.setAttribute("delayedChannel", delayedChannel);
     xml.setAttribute("pathLength", pathLength);
     xml.setAttribute("latency", latency);
@@ -522,7 +519,7 @@ void PhaseAnalyzerAudioProcessor::setStateInformation (const void* data, int siz
             sampleDelay    = xmlState->getIntAttribute("sampleDelay", sampleDelay);
             frameSize      = xmlState->getIntAttribute("frameSize", frameSize);
             accuracy       = xmlState->getIntAttribute("accuracy", accuracy);
-            active         = xmlState->getBoolAttribute("active", active);
+            framesAnalyzed = xmlState->getBoolAttribute("framesAnalyzed", framesAnalyzed);
             delayedChannel = xmlState->getBoolAttribute("delayedChannel", delayedChannel);
             pathLength     = (float)xmlState->getDoubleAttribute("pathLength", pathLength);
             latency        = (float)xmlState->getDoubleAttribute("latency", latency);

@@ -38,17 +38,17 @@ private:
     // access the processor object that created it.
     PhaseAnalyzerAudioProcessor& processor;
     
-    TextEditor sampleDelayTextEditor_, accuracyTextEditor_, activeTextEditor_, delayedChannelTextEditor_,
+    TextEditor sampleDelayTextEditor_, accuracyTextEditor_, framesAnalyzedTextEditor_, delayedChannelTextEditor_,
                pathLengthTextEditor_, latencyTextEditor_;
     
-    Label sampleDelayLabel_, frameSizeLabel_, accuracyLabel_, activeLabel_, delayedChannelLabel_,
+    Label sampleDelayLabel_, frameSizeLabel_, accuracyLabel_, framesAnalyzedLabel_, delayedChannelLabel_,
           pathLengthLabel_, latencyLabel_, hopSizeDivisorLabel_, silenceThresholdLabel_, windowTypeLabel_;
     
     ComboBox frameSizeComboBox_, hopSizeDivisorComboBox_, windowTypeComboBox_;
     
     Slider silenceThresholdSlider_;
         
-    String accuracyString, activeString, delayedChannelString;
+    String accuracyString, framesAnalyzedString, delayedChannelString;
     
     Font largeParameterFont_, smallParameterFont_;
     

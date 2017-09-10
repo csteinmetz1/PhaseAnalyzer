@@ -86,11 +86,11 @@ public:
     int sampleDelay;
     int frameSize;
     float accuracy;
-    bool active;
+    int framesAnalyzed;
     bool delayedChannel;
     float pathLength;
     float latency;
-    double sampleRate_;
+    double sampleRate;
     double speedOfSound;
     
     int hopSizeDivisor;

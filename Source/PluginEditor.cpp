@@ -18,7 +18,7 @@ PhaseAnalyzerAudioProcessorEditor::PhaseAnalyzerAudioProcessorEditor (PhaseAnaly
       sampleDelayLabel_("", "Sample Delay"),
       frameSizeLabel_("", "Frame Size"),
       accuracyLabel_("", "Accuracy"),
-      activeLabel_("", "Active"),
+      framesAnalyzedLabel_("", "Frames Analyzed"),
       delayedChannelLabel_("", "Delayed Channel"),
       pathLengthLabel_("", "Path Length (cm)"),
       latencyLabel_("", "Latency (ms)"),
@@ -49,10 +49,10 @@ PhaseAnalyzerAudioProcessorEditor::PhaseAnalyzerAudioProcessorEditor (PhaseAnaly
     accuracyTextEditor_.setFont(Font (15.0f));
     accuracyTextEditor_.setText("0%", false);
     
-    addAndMakeVisible(&activeTextEditor_);
-    activeTextEditor_.setReadOnly(true);
-    activeTextEditor_.setFont(smallParameterFont_);
-    activeTextEditor_.setText("No", false);
+    addAndMakeVisible(&framesAnalyzedTextEditor_);
+    framesAnalyzedTextEditor_.setReadOnly(true);
+    framesAnalyzedTextEditor_.setFont(smallParameterFont_);
+    framesAnalyzedTextEditor_.setText("No", false);
     
     addAndMakeVisible(&delayedChannelTextEditor_);
     delayedChannelTextEditor_.setReadOnly(true);
@@ -95,8 +95,8 @@ PhaseAnalyzerAudioProcessorEditor::PhaseAnalyzerAudioProcessorEditor (PhaseAnaly
     accuracyLabel_.attachToComponent(&accuracyTextEditor_, true);
     accuracyLabel_.setFont(Font (15.0f));
     
-    activeLabel_.attachToComponent(&activeTextEditor_, true);
-    activeLabel_.setFont(Font (15.0f));
+    framesAnalyzedLabel_.attachToComponent(&framesAnalyzedTextEditor_, true);
+    framesAnalyzedLabel_.setFont(Font (15.0f));
     
     delayedChannelLabel_.attachToComponent(&delayedChannelTextEditor_, false);
     delayedChannelLabel_.setFont(Font (15.0f));
@@ -150,12 +150,12 @@ void PhaseAnalyzerAudioProcessorEditor::resized()
     sampleDelayTextEditor_.setBounds(195, 150, 105, 40);
     frameSizeComboBox_.setBounds(50, 160, 100, 25);
     accuracyTextEditor_.setBounds(400, 160, 50, 25);
-    activeTextEditor_.setBounds(400, 385, 45, 25);
+    framesAnalyzedTextEditor_.setBounds(400, 385, 45, 25);
     delayedChannelTextEditor_.setBounds(50, 315, 100, 25);
     pathLengthTextEditor_.setBounds(200, 315, 100, 25);
     latencyTextEditor_.setBounds(350, 315, 100, 25);
     hopSizeDivisorComboBox_.setBounds(50, 100, 100, 25);
-    silenceThresholdSlider_.setBounds(180, 385, 150, 25);
+    silenceThresholdSlider_.setBounds(160, 385, 150, 25);
     windowTypeComboBox_.setBounds(50, 220, 100, 25);
 }
 
@@ -184,12 +184,12 @@ void PhaseAnalyzerAudioProcessorEditor::timerCallback()
     else if ((int)(ourProcessor->windowType) == 4) {windowTypeComboBox_.setSelectedId(4);}
     
     accuracyString = (String(ourProcessor->accuracy).operator+=('%'));
-    if (ourProcessor->active) {activeString = "*";} else {activeString = " ";}
+    framesAnalyzedString  = (String(ourProcessor->framesAnalyzed));
     if (ourProcessor->delayedChannel) {delayedChannelString = "Left";} else {delayedChannelString = "Right";}
     
     sampleDelayTextEditor_.setText(String(ourProcessor->sampleDelay).paddedLeft(juce_wchar(' '), 4), false);
     accuracyTextEditor_.setText(accuracyString.paddedLeft(juce_wchar(' '), 3), false);
-    activeTextEditor_.setText(activeString.paddedLeft(juce_wchar(' '), 4), false);
+    framesAnalyzedTextEditor_.setText(framesAnalyzedString.paddedLeft(juce_wchar(' '), 4), false);
     delayedChannelTextEditor_.setText(delayedChannelString.paddedLeft(' ', 12));
     pathLengthTextEditor_.setText(String(ourProcessor->pathLength).paddedLeft(' ', 12));
     latencyTextEditor_.setText(String(ourProcessor->latency).paddedLeft(' ', 12));
