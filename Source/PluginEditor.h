@@ -20,7 +20,9 @@
 class PhaseAnalyzerAudioProcessorEditor  : public AudioProcessorEditor,
                                            public Timer,
                                            private ComboBox::Listener,
-                                           private Slider::Listener
+                                           private Slider::Listener,
+                                           private Button::Listener,
+                                           private TextEditor::Listener
 {
 public:
     PhaseAnalyzerAudioProcessorEditor (PhaseAnalyzerAudioProcessor&);
@@ -32,17 +34,22 @@ public:
     void timerCallback() override;
     void comboBoxChanged(ComboBox*) override;
     void sliderValueChanged(Slider*) override;
+    void buttonClicked(Button*) override;
+    void textEditorReturnKeyPressed(TextEditor&) override;
 
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     PhaseAnalyzerAudioProcessor& processor;
     
+    ToggleButton delayCorrectionToggleButton_;
+    
     TextEditor sampleDelayTextEditor_, accuracyTextEditor_, framesAnalyzedTextEditor_, delayedChannelTextEditor_,
-               pathLengthTextEditor_, latencyTextEditor_;
+               pathLengthTextEditor_, latencyTextEditor_, tempTextEditor_;
     
     Label sampleDelayLabel_, frameSizeLabel_, accuracyLabel_, framesAnalyzedLabel_, delayedChannelLabel_,
-          pathLengthLabel_, latencyLabel_, hopSizeDivisorLabel_, silenceThresholdLabel_, windowTypeLabel_;
+          pathLengthLabel_, latencyLabel_, hopSizeDivisorLabel_, silenceThresholdLabel_, windowTypeLabel_,
+          delayCorrectionLabel_, tempLabel_;
     
     ComboBox frameSizeComboBox_, hopSizeDivisorComboBox_, windowTypeComboBox_;
     

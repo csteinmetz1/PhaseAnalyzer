@@ -44,9 +44,13 @@ PhaseAnalyzerAudioProcessor::PhaseAnalyzerAudioProcessor() :
     windowType        = 1; // 1 - Hann, 2 - Blackman-Harris, 3 - Hamming
     
     analysisBufferLength_  = 4096;
-    speedOfSound           = 346.13;
     numCalculations        = 0;
     frameSizeIndex         = 3;
+    
+    speedOfSound = 346.13; // speed of sound in m/s
+    temp         = 20;     // ambient temperature in deg C
+    
+    delayCorrection = false;
 }
 
 PhaseAnalyzerAudioProcessor::~PhaseAnalyzerAudioProcessor()
@@ -122,6 +126,12 @@ void PhaseAnalyzerAudioProcessor::setParameter(int index, float newValue)
             break;
         case kwindowType:
             windowType = (int) newValue;
+            break;
+        case kdelayCorrection:
+            delayCorrection = (bool) newValue;
+            break;
+        case ktemperature:
+            temp = newValue;
             break;
         default:
             break;
@@ -204,6 +214,8 @@ void PhaseAnalyzerAudioProcessor::prepareToPlay (double sampleRate_, int samples
     analysisBuffer_.clear();
     gccBuffer.setSize(4, analysisBufferLength_);
     gccBuffer.clear();
+    previousSamples.setSize(2, analysisBufferLength_);
+    previousSamples.clear();
     sampleRate = sampleRate_;
 }
 
@@ -241,6 +253,7 @@ void PhaseAnalyzerAudioProcessor::resetBuffer()
 {
     analysisBuffer_.clear();
     gccBuffer.clear();
+    previousSamples.clear();
     samplesAdded = 0;
    
 }
@@ -391,6 +404,59 @@ void PhaseAnalyzerAudioProcessor::applyWindow(AudioSampleBuffer& gccBuffer)
     
 }
 
+void PhaseAnalyzerAudioProcessor::correctDelay(AudioSampleBuffer& buffer)
+{
+    const int numSamples = buffer.getNumSamples();
+    AudioSampleBuffer delayed;
+    delayed.setSize(2, numSamples);
+    
+    
+    // right delayed  - delay left channel
+    if (delayedChannel == 0){
+        
+        const float* left = buffer.getReadPointer(0);
+        float* delay = delayed.getWritePointer(0);
+        
+        //cout << "Before delay ----------------" << endl;
+        //for (int i = 0; i < numSamples; i++){
+        //    cout << left[i] << endl;
+        //}
+        //cout << "----------------------" << endl;
+        
+
+        for (int i = sampleDelay; i < numSamples; i++){
+            delay[i] = left[i-sampleDelay];
+        }
+        
+        const float* previous = previousSamples.getReadPointer(0);
+        for (int i = 0; i < sampleDelay; i++){
+            delay[i] = previous[(numSamples-1)-i];
+        }
+        
+        //cout << "After delay ----------------" << endl;
+        //for (int i = 0; i < numSamples; i++){
+        //    cout << delay[i] << endl;
+        //}
+        
+        buffer.copyFrom(0, 0, delayed, 0, 0, numSamples);
+        
+    }
+    
+    if (delayedChannel == 1){
+        const float* right = buffer.getReadPointer(1);
+        float* delay = delayed.getWritePointer(1);
+        for (int i = sampleDelay; i < numSamples; i++){
+            delay[i] = right[i-sampleDelay];
+        }
+        
+        const float* previous = previousSamples.getReadPointer(1);
+        for (int i = 0; i < sampleDelay; i++){
+            delay[i] = previous[(numSamples-1)-i];
+        }
+        buffer.copyFrom(1, 0, delayed, 1, 0, numSamples);
+    }
+}
+
 void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 {
     const int totalNumInputChannels  = getTotalNumInputChannels();
@@ -405,7 +471,6 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
     // this code if your algorithm always overwrites all the output channels.
     for (int i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, numSamples);
-   
     
     // Check if analysisBuffer has been filled, if yes run GCC-PHAT
     if (samplesAdded == analysisBufferLength_){
@@ -430,7 +495,7 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
             int delay = gccPHAT(frame);
             if (delay != -1) {
                 frameDelay[i] = delay;
-                cout << "delay" << i << " | " << frameDelay[i] << endl;
+                //cout << "delay" << i << " | " << frameDelay[i] << endl;
                 i++;
             }
         }
@@ -442,6 +507,7 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
             sampleDelay = analysis.first;
 
             latency = ((double(sampleDelay)/sampleRate)) * 1000.0;
+            speedOfSound = 331.3 * (sqrt(1 + (temp/273.15)));
             pathLength = (latency * speedOfSound)/10.0;
             
             int count = 0;
@@ -453,7 +519,6 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
                     count++;
                 }
             }
-            cout << count << endl;
             accuracy = floor((float(count) / float(i))*100);
             framesAnalyzed = i;
         }
@@ -469,9 +534,25 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
     
     // increment the number of audio samples added
     samplesAdded = samplesAdded + numSamples;
-    //cout << "added: " << samplesAdded << endl;
-
     
+    AudioSampleBuffer tempBuffer;
+    
+    tempBuffer.setSize(2, numSamples);
+    
+    // Save current samples before correcting delay
+    for (int ch = 0; ch < totalNumInputChannels; ++ch)
+    {
+        tempBuffer.addFrom(ch, 0, buffer, ch, 0, numSamples);
+    }
+    
+    // Correct delay if toggle button checked
+    if (delayCorrection == true) {correctDelay(buffer);}
+    
+    // Save current samples for delay correction
+    for (int ch = 0; ch < totalNumInputChannels; ++ch)
+    {
+        previousSamples.addFrom(ch, 0, tempBuffer, ch, 0, numSamples);
+    }
 }
 
 //==============================================================================
@@ -502,7 +583,9 @@ void PhaseAnalyzerAudioProcessor::getStateInformation (MemoryBlock& destData)
     xml.setAttribute("latency", latency);
     xml.setAttribute("hopSizeDivisor", hopSizeDivisor);
     xml.setAttribute("windowType", windowType);
-    
+    xml.setAttribute("delayCorrection", delayCorrection);
+    xml.setAttribute("temp", temp);
+    ;
     copyXmlToBinary(xml, destData);
 }
 
@@ -525,6 +608,8 @@ void PhaseAnalyzerAudioProcessor::setStateInformation (const void* data, int siz
             latency        = (float)xmlState->getDoubleAttribute("latency", latency);
             hopSizeDivisor = xmlState->getIntAttribute("hopSizeDivisor", hopSizeDivisor);
             windowType     = xmlState->getIntAttribute("windowType", windowType);
+            delayCorrection = xmlState->getBoolAttribute("delayCorrection", delayCorrection);
+            temp            = (float)xmlState->getDoubleAttribute("temp", temp);
         }
     }
 }

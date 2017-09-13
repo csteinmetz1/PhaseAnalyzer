@@ -23,8 +23,10 @@ PhaseAnalyzerAudioProcessorEditor::PhaseAnalyzerAudioProcessorEditor (PhaseAnaly
       pathLengthLabel_("", "Path Length (cm)"),
       latencyLabel_("", "Latency (ms)"),
       hopSizeDivisorLabel_("", "Hop Size Divisor"),
-      silenceThresholdLabel_("", "Silence Threshold"),
-      windowTypeLabel_("", "Window Type")
+      silenceThresholdLabel_("", "Threshold"),
+      windowTypeLabel_("", "Window Type"),
+      delayCorrectionLabel_("", "Delay Correction"),
+      tempLabel_("", "Temperature")
 
 {
     frameSizeOptions = {"64", "128", "256", "512", "1024", "2048"};
@@ -85,6 +87,13 @@ PhaseAnalyzerAudioProcessorEditor::PhaseAnalyzerAudioProcessorEditor (PhaseAnaly
     windowTypeComboBox_.addItemList(windowTypeOptions, 1);
     windowTypeComboBox_.addListener(this);
     
+    addAndMakeVisible(&delayCorrectionToggleButton_);
+    delayCorrectionToggleButton_.addListener(this);
+
+    addAndMakeVisible(&tempTextEditor_);
+    tempTextEditor_.addListener(this);
+    tempLabel_.attachToComponent(&tempTextEditor_, true);
+    tempTextEditor_.setText("20"  );
     
     sampleDelayLabel_.attachToComponent(&sampleDelayTextEditor_, false);
     sampleDelayLabel_.setFont(Font (15.0f));
@@ -115,6 +124,9 @@ PhaseAnalyzerAudioProcessorEditor::PhaseAnalyzerAudioProcessorEditor (PhaseAnaly
     
     windowTypeLabel_.attachToComponent(&windowTypeComboBox_, false);
     windowTypeLabel_.setFont(Font (15.0f));
+    
+    delayCorrectionLabel_.attachToComponent(&delayCorrectionToggleButton_, true);
+    delayCorrectionLabel_.setFont(Font (15.0f));
     
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
@@ -147,7 +159,7 @@ void PhaseAnalyzerAudioProcessorEditor::resized()
 {
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
-    sampleDelayTextEditor_.setBounds(195, 150, 105, 40);
+    sampleDelayTextEditor_.setBounds(195, 125, 105, 40);
     frameSizeComboBox_.setBounds(50, 160, 100, 25);
     accuracyTextEditor_.setBounds(400, 160, 50, 25);
     framesAnalyzedTextEditor_.setBounds(400, 385, 45, 25);
@@ -155,8 +167,10 @@ void PhaseAnalyzerAudioProcessorEditor::resized()
     pathLengthTextEditor_.setBounds(200, 315, 100, 25);
     latencyTextEditor_.setBounds(350, 315, 100, 25);
     hopSizeDivisorComboBox_.setBounds(50, 100, 100, 25);
-    silenceThresholdSlider_.setBounds(160, 385, 150, 25);
+    silenceThresholdSlider_.setBounds(250, 220, 150, 25);
     windowTypeComboBox_.setBounds(50, 220, 100, 25);
+    delayCorrectionToggleButton_.setBounds(160, 385, 100, 25);
+    tempTextEditor_.setBounds(400, 125, 50, 25);
 }
 
 void PhaseAnalyzerAudioProcessorEditor::timerCallback()
@@ -220,9 +234,27 @@ void PhaseAnalyzerAudioProcessorEditor::comboBoxChanged(ComboBox* comboBox)
 
 void PhaseAnalyzerAudioProcessorEditor::sliderValueChanged(Slider* slider)
 {
-    if (slider == &silenceThresholdSlider_);
+    if (slider == &silenceThresholdSlider_)
     {
         getProcessor()->setParameterNotifyingHost(PhaseAnalyzerAudioProcessor::ksilenceThreshold,
                                                   (float)silenceThresholdSlider_.getValue());
+    }
+}
+
+void PhaseAnalyzerAudioProcessorEditor::buttonClicked(Button* button)
+{
+    if (button == &delayCorrectionToggleButton_)
+    {
+        getProcessor()->setParameterNotifyingHost(PhaseAnalyzerAudioProcessor::kdelayCorrection,
+                                                  delayCorrectionToggleButton_.getToggleState());
+    }
+}
+
+void PhaseAnalyzerAudioProcessorEditor::textEditorReturnKeyPressed(TextEditor& textEditor){
+    
+    if (&textEditor == &tempTextEditor_)
+    {
+        getProcessor()->setParameterNotifyingHost(PhaseAnalyzerAudioProcessor::ktemperature,
+                                                  tempTextEditor_.getText().getFloatValue());
     }
 }

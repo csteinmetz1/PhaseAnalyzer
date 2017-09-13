@@ -67,6 +67,7 @@ public:
     int gccPHAT(int frame);
     void applyWindow(AudioSampleBuffer& gccData);
     void resetBuffer();
+    void correctDelay(AudioSampleBuffer& buffer);
     
     //==============================================================================
     FFT fft[7]  {{6, false}, {7, false}, {8, false}, {9, false}, {10, false}, {11, false}, {12, false}};
@@ -80,6 +81,8 @@ public:
         khopSizeDivisor,
         ksilenceThreshold,
         kwindowType,
+        kdelayCorrection,
+        ktemperature,
         kNumParmeters
     };
     
@@ -90,6 +93,8 @@ public:
     bool delayedChannel;
     float pathLength;
     float latency;
+    
+    float temp;
     double sampleRate;
     double speedOfSound;
     
@@ -101,11 +106,13 @@ public:
     
     int numCalculations;
     int frameSizeIndex;
+    
+    bool delayCorrection;
 
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PhaseAnalyzerAudioProcessor)
-    AudioSampleBuffer analysisBuffer_, gccBuffer;
+    AudioSampleBuffer analysisBuffer_, gccBuffer, previousSamples;
     int analysisBufferLength_, gccBufferLength;
     int samplesAdded;
 };
