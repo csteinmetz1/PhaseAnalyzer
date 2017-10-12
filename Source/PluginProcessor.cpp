@@ -51,6 +51,8 @@ PhaseAnalyzerAudioProcessor::PhaseAnalyzerAudioProcessor() :
     temp         = 20;     // ambient temperature in deg C
     
     delayCorrection = false;
+    wptr = 0;
+    rptr = 0;
 }
 
 PhaseAnalyzerAudioProcessor::~PhaseAnalyzerAudioProcessor()
@@ -214,8 +216,8 @@ void PhaseAnalyzerAudioProcessor::prepareToPlay (double sampleRate_, int samples
     analysisBuffer_.clear();
     gccBuffer.setSize(4, analysisBufferLength_);
     gccBuffer.clear();
-    previousSamples.setSize(2, analysisBufferLength_);
-    previousSamples.clear();
+    delayBuffer.setSize(2, analysisBufferLength_);
+    delayBuffer.clear();
     sampleRate = sampleRate_;
 }
 
@@ -253,9 +255,7 @@ void PhaseAnalyzerAudioProcessor::resetBuffer()
 {
     analysisBuffer_.clear();
     gccBuffer.clear();
-    previousSamples.clear();
     samplesAdded = 0;
-   
 }
 
 // mode code
@@ -309,7 +309,7 @@ int PhaseAnalyzerAudioProcessor::gccPHAT(int frame)
     }
     
     int frameDelay = 0;
-      
+    
     if (gccBuffer.getRMSLevel(0, 0, frameSize) > silenceThreshold)
     {
         applyWindow(gccBuffer);
@@ -353,7 +353,8 @@ int PhaseAnalyzerAudioProcessor::gccPHAT(int frame)
         //cout << "start --------" << endl;
         
         for (int i = 0; i < frameSize; i++){
-            S[i] = sqrt(powf(S_td[i].r, 2) + powf(S_td[i].i, 2));
+            S[i] = S_td[i].r;
+            //S[i] = sqrt(powf(S_td[i].r, 2) + powf(S_td[i].i, 2));
             //cout << S[i] << endl;
         }
         
@@ -407,53 +408,40 @@ void PhaseAnalyzerAudioProcessor::applyWindow(AudioSampleBuffer& gccBuffer)
 void PhaseAnalyzerAudioProcessor::correctDelay(AudioSampleBuffer& buffer)
 {
     const int numSamples = buffer.getNumSamples();
-    AudioSampleBuffer delayed;
-    delayed.setSize(2, numSamples);
     
+    rptr = wptr - sampleDelay;
+    
+    if (rptr < 0){
+        rptr = analysisBufferLength_ - 1 - sampleDelay;
+    }
     
     // right delayed  - delay left channel
     if (delayedChannel == 0){
         
-        const float* left = buffer.getReadPointer(0);
-        float* delay = delayed.getWritePointer(0);
+        float* left = buffer.getWritePointer(0);
+        const float* delay = delayBuffer.getReadPointer(0);
         
-        //cout << "Before delay ----------------" << endl;
-        //for (int i = 0; i < numSamples; i++){
-        //    cout << left[i] << endl;
-        //}
-        //cout << "----------------------" << endl;
-        
-
-        for (int i = sampleDelay; i < numSamples; i++){
-            delay[i] = left[i-sampleDelay];
+        for (int i = 0; i < numSamples; i++){
+            left[i] = delay[rptr];
+            rptr++;
+            if (rptr >= analysisBufferLength_){
+                rptr = 0;
+            }
         }
-        
-        const float* previous = previousSamples.getReadPointer(0);
-        for (int i = 0; i < sampleDelay; i++){
-            delay[i] = previous[(numSamples-1)-i];
-        }
-        
-        //cout << "After delay ----------------" << endl;
-        //for (int i = 0; i < numSamples; i++){
-        //    cout << delay[i] << endl;
-        //}
-        
-        buffer.copyFrom(0, 0, delayed, 0, 0, numSamples);
-        
     }
-    
+    // left delayed  - delay right channel
     if (delayedChannel == 1){
-        const float* right = buffer.getReadPointer(1);
-        float* delay = delayed.getWritePointer(1);
-        for (int i = sampleDelay; i < numSamples; i++){
-            delay[i] = right[i-sampleDelay];
-        }
+
+        float* right = buffer.getWritePointer(1);
+        const float* delay = delayBuffer.getReadPointer(1);
         
-        const float* previous = previousSamples.getReadPointer(1);
-        for (int i = 0; i < sampleDelay; i++){
-            delay[i] = previous[(numSamples-1)-i];
+        for (int i = 0; i < numSamples; i++){
+            right[i] = delay[rptr];
+            rptr++;
+            if (rptr >= analysisBufferLength_){
+                rptr = 0;
+            }
         }
-        buffer.copyFrom(1, 0, delayed, 1, 0, numSamples);
     }
 }
 
@@ -505,7 +493,6 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
         // only update GUI if more than one frame was above silence threshold
         if (i > 0) {
             sampleDelay = analysis.first;
-
             latency = ((double(sampleDelay)/sampleRate)) * 1000.0;
             speedOfSound = 331.3 * (sqrt(1 + (temp/273.15)));
             pathLength = (latency * speedOfSound)/10.0;
@@ -520,7 +507,6 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
                 }
             }
             accuracy = floor((float(count) / float(i))*100);
-            framesAnalyzed = i;
         }
         resetBuffer();
     }
@@ -535,25 +521,55 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
     // increment the number of audio samples added
     samplesAdded = samplesAdded + numSamples;
     
-    AudioSampleBuffer tempBuffer;
-    
-    tempBuffer.setSize(2, numSamples);
-    
     // Save current samples before correcting delay
-    for (int ch = 0; ch < totalNumInputChannels; ++ch)
-    {
-        tempBuffer.addFrom(ch, 0, buffer, ch, 0, numSamples);
+    /////////////////////////////////////////////
+    int wptr_[2];
+    wptr_[0] = wptr;
+    wptr_[1] = wptr;
+    
+    for (int ch = 0; ch < totalNumInputChannels; ++ch) {
+        const float* input = buffer.getReadPointer(ch);
+        float* delay = delayBuffer.getWritePointer(ch);
+    
+        for (int i = 0; i < numSamples; i++){
+            delay[wptr_[ch] + i] = input[i];
+        }
     }
+    //////////////////////////////////////////
     
     // Correct delay if toggle button checked
-    if (delayCorrection == true) {correctDelay(buffer);}
+    if (delayCorrection == true && sampleDelay != 0) {correctDelay(buffer);}
     
-    // Save current samples for delay correction
-    for (int ch = 0; ch < totalNumInputChannels; ++ch)
-    {
-        previousSamples.addFrom(ch, 0, tempBuffer, ch, 0, numSamples);
+    wptr = wptr + numSamples;
+    
+    if (wptr >= analysisBufferLength_){
+        wptr = 0;
     }
+    
 }
+
+// Eventually would like to be able to force meter updates anywhere in code
+/*
+void PhaseAnalyzerAudioProcessor::updateMeters(){
+    
+    int count = 0; // count number of frames within 1 sample delay
+    int val = 0; // current sample delay
+    
+    for (int p = 0; p < i; p++){
+        val = frameDelay[p];
+        if (val == sampleDelay || val == sampleDelay - 1 || val == sampleDelay + 1){
+            count++;
+        }
+    }
+    
+    latency = ((double(sampleDelay)/sampleRate)) * 1000.0;
+    speedOfSound = 331.3 * (sqrt(1 + (temp/273.15)));
+    pathLength = (latency * speedOfSound)/10.0;
+    accuracy = floor((float(count) / float(i))*100);
+    framesAnalyzed = i;
+    
+}
+*/
 
 //==============================================================================
 bool PhaseAnalyzerAudioProcessor::hasEditor() const

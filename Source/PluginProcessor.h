@@ -108,11 +108,12 @@ public:
     int frameSizeIndex;
     
     bool delayCorrection;
+    int wptr, rptr;
 
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PhaseAnalyzerAudioProcessor)
-    AudioSampleBuffer analysisBuffer_, gccBuffer, previousSamples;
+    AudioSampleBuffer analysisBuffer_, gccBuffer, delayBuffer;
     int analysisBufferLength_, gccBufferLength;
     int samplesAdded;
 };
