@@ -496,6 +496,7 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
             latency = ((double(sampleDelay)/sampleRate)) * 1000.0;
             speedOfSound = 331.3 * (sqrt(1 + (temp/273.15)));
             pathLength = (latency * speedOfSound)/10.0;
+            framesAnalyzed = i;
             
             int count = 0;
             int val = 0;
@@ -601,7 +602,6 @@ void PhaseAnalyzerAudioProcessor::getStateInformation (MemoryBlock& destData)
     xml.setAttribute("windowType", windowType);
     xml.setAttribute("delayCorrection", delayCorrection);
     xml.setAttribute("temp", temp);
-    ;
     copyXmlToBinary(xml, destData);
 }
 

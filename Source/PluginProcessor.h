@@ -108,6 +108,7 @@ public:
     int frameSizeIndex;
     
     bool delayCorrection;
+    bool resetMeter;
     int wptr, rptr;
 
 private:
