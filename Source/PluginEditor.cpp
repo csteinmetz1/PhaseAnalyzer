@@ -144,15 +144,9 @@ void PhaseAnalyzerAudioProcessorEditor::paint (Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
-
     g.setColour (Colours::white);
     g.setFont (25.0f);
     g.drawSingleLineText ("GCC-PHAT Phase Analyzer", 25, 40, Justification::left);
-    //g.setFont (15.0f);
-    //g.drawSingleLineText("Christian Steinmetz", 25, 40, Justification::left);
-    //g.setFont (12.0f);
-    //g.drawSingleLineText("Clemson University", 25, 45, Justification::left);
-
 }
 
 void PhaseAnalyzerAudioProcessorEditor::resized()
@@ -183,14 +177,12 @@ void PhaseAnalyzerAudioProcessorEditor::timerCallback()
     else if ((int)(ourProcessor->frameSize) == 512)  {frameSizeComboBox_.setSelectedId(4);}
     else if ((int)(ourProcessor->frameSize) == 1024) {frameSizeComboBox_.setSelectedId(5);}
     else if ((int)(ourProcessor->frameSize) == 2048) {frameSizeComboBox_.setSelectedId(6);}
-
     
     if      ((int)(ourProcessor->hopSizeDivisor) == 1) {hopSizeDivisorComboBox_.setSelectedId(1);}
     else if ((int)(ourProcessor->hopSizeDivisor) == 2) {hopSizeDivisorComboBox_.setSelectedId(2);}
     else if ((int)(ourProcessor->hopSizeDivisor) == 4) {hopSizeDivisorComboBox_.setSelectedId(3);}
     else if ((int)(ourProcessor->hopSizeDivisor) == 8) {hopSizeDivisorComboBox_.setSelectedId(4);}
     else                                               {hopSizeDivisorComboBox_.setSelectedId(5);}
-
     
     if      ((int)(ourProcessor->windowType) == 1) {windowTypeComboBox_.setSelectedId(1);}
     else if ((int)(ourProcessor->windowType) == 2) {windowTypeComboBox_.setSelectedId(2);}

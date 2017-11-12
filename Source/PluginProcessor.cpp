@@ -223,8 +223,6 @@ void PhaseAnalyzerAudioProcessor::prepareToPlay (double sampleRate_, int samples
 
 void PhaseAnalyzerAudioProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -234,13 +232,10 @@ bool PhaseAnalyzerAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
     ignoreUnused (layouts);
     return true;
   #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
     if (layouts.getMainOutputChannelSet() != AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != AudioChannelSet::stereo())
         return false;
 
-    // This checks if the input layout matches the output layout
    #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
@@ -331,34 +326,21 @@ int PhaseAnalyzerAudioProcessor::gccPHAT(int frame)
         fft[frameSizeIndex].perform(L_td, L_fd);
         fft[frameSizeIndex].perform(R_td, R_fd);
         
-      
+        // Core GCC-PHAT algorithm
         for (int i = 0; i < frameSize; i++)
-        {
-            //cout << sqrt(powf(L_fd[i].r, 2) + powf(L_fd[i].i, 2)) << endl;
-            
+        {          
             S_fd[i].r = (L_fd[i].r * R_fd[i].r) + (L_fd[i].i * R_fd[i].i);
-            //cout << "L fd " << i << ": " << L_fd[i].r << endl;
-            
             S_fd[i].i = (L_fd[i].i * R_fd[i].r) - (L_fd[i].r * R_fd[i].i);
-            
             absofS[i] = sqrt(powf(S_fd[i].r, 2) + powf(S_fd[i].i, 2));
-            
             S_fd[i].r = S_fd[i].r / absofS[i];
             S_fd[i].i = S_fd[i].i / absofS[i];
-
         }
         
         ifft[frameSizeIndex].perform(S_fd, S_td);    
-        
-        //cout << "start --------" << endl;
-        
+                
         for (int i = 0; i < frameSize; i++){
             S[i] = S_td[i].r;
-            //S[i] = sqrt(powf(S_td[i].r, 2) + powf(S_td[i].i, 2));
-            //cout << S[i] << endl;
         }
-        
-        //cout << "end ----------" << endl;
         
         // find max
         frameDelay = int(max_element(S, S + frameSize) - S);
@@ -376,9 +358,7 @@ int PhaseAnalyzerAudioProcessor::gccPHAT(int frame)
 
 void PhaseAnalyzerAudioProcessor::applyWindow(AudioSampleBuffer& gccBuffer)
 {
-    
-    double multiplier;
-    
+    double multiplier; 
     for (int channel = 0; channel < 2; channel++)
     {
         float* gccData = gccBuffer.getWritePointer(channel);
@@ -401,8 +381,7 @@ void PhaseAnalyzerAudioProcessor::applyWindow(AudioSampleBuffer& gccBuffer)
             }
             gccData[i] = gccData[i] * multiplier;
         }
-    }
-    
+    } 
 }
 
 void PhaseAnalyzerAudioProcessor::correctDelay(AudioSampleBuffer& buffer)
@@ -414,7 +393,6 @@ void PhaseAnalyzerAudioProcessor::correctDelay(AudioSampleBuffer& buffer)
     if (rptr < 0){
         rptr = analysisBufferLength_ - 1 - sampleDelay;
     }
-    
     // right delayed  - delay left channel
     if (delayedChannel == 0){
         
@@ -451,12 +429,6 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
     const int totalNumOutputChannels = getTotalNumOutputChannels();
     const int numSamples = buffer.getNumSamples();
     
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
     for (int i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, numSamples);
     
@@ -483,13 +455,10 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
             int delay = gccPHAT(frame);
             if (delay != -1) {
                 frameDelay[i] = delay;
-                //cout << "delay" << i << " | " << frameDelay[i] << endl;
                 i++;
             }
         }
-        
         std::pair<int, int> analysis = mode(frameDelay, i);
-        
         // only update GUI if more than one frame was above silence threshold
         if (i > 0) {
             sampleDelay = analysis.first;
@@ -512,13 +481,11 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
         resetBuffer();
     }
     
-   
     // Add each channel of current block of samples into analysisBuffer
     for (int ch = 0; ch < totalNumInputChannels; ++ch)
     {
         analysisBuffer_.addFrom(ch, samplesAdded, buffer, ch, 0, numSamples);
     }
-    
     // increment the number of audio samples added
     samplesAdded = samplesAdded + numSamples;
     
@@ -531,7 +498,6 @@ void PhaseAnalyzerAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiB
     for (int ch = 0; ch < totalNumInputChannels; ++ch) {
         const float* input = buffer.getReadPointer(ch);
         float* delay = delayBuffer.getWritePointer(ch);
-    
         for (int i = 0; i < numSamples; i++){
             delay[wptr_[ch] + i] = input[i];
         }
@@ -629,7 +595,6 @@ void PhaseAnalyzerAudioProcessor::setStateInformation (const void* data, int siz
         }
     }
 }
-
 //==============================================================================
 // This creates new instances of the plugin..
 AudioProcessor* JUCE_CALLTYPE createPluginFilter()
